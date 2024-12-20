@@ -1,0 +1,51 @@
+# Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
+# More GitHub Actions for Azure: https://github.com/Azure/actions
+
+name: Build and deploy container app to Azure Web App - testpython
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: 'ubuntu-latest'
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+
+    - name: Log in to registry
+      uses: docker/login-action@v2
+      with:
+        registry: https://helloworltest.azurecr.io/
+        username: ${{ secrets.AzureAppService_ContainerUsername_870ddfbe984c4fb197a4ef5d92cec018 }}
+        password: ${{ secrets.AzureAppService_ContainerPassword_20a84c147e19443ebe53a3514f472d79 }}
+
+    - name: Build and push container image to registry
+      uses: docker/build-push-action@v3
+      with:
+        push: true
+        tags: helloworltest.azurecr.io/${{ secrets.AzureAppService_ContainerUsername_870ddfbe984c4fb197a4ef5d92cec018 }}/hello-world:${{ github.sha }}
+        file: ./Dockerfile
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    environment:
+      name: 'production'
+      url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
+
+    steps:
+    - name: Deploy to Azure Web App
+      id: deploy-to-webapp
+      uses: azure/webapps-deploy@v2
+      with:
+        app-name: 'testpython'
+        slot-name: 'production'
+        publish-profile: ${{ secrets.AzureAppService_PublishProfile_f5fc318a8b9141f3a04f9b8db24c36dc }}
+        images: 'helloworltest.azurecr.io/${{ secrets.AzureAppService_ContainerUsername_870ddfbe984c4fb197a4ef5d92cec018 }}/hello-world:${{ github.sha }}'
